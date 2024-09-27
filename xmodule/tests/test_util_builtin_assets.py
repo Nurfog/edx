@@ -104,10 +104,10 @@ class AddCssToFragmentTests(TestCase):
         fragment = Fragment()
         builtin_assets.add_css_to_fragment(fragment, "VideoBlockEditor.css")
         fr = FragmentResource(
-            # kind='url',
-            # data=f'{settings.REPO_ROOT}/xmodule/assets/VideoBlockEditor.css',
-            kind='text',
-            data=PosixPath(f"{settings.REPO_ROOT}/xmodule/assets/VideoBlockEditor.css").read_text(encoding="utf-8"),
+            kind='url',
+            data=f'{settings.REPO_ROOT}/xmodule/assets/VideoBlockEditor.css',
+            # kind='text',
+            # data=PosixPath(f"{settings.REPO_ROOT}/xmodule/assets/VideoBlockEditor.css").read_text(encoding="utf-8"),
             mimetype='text/css',
             placement='head',
         )
