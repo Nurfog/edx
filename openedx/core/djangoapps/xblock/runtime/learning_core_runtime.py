@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.transaction import atomic
+from django.urls import reverse
 
 from openedx_learning.api import authoring as authoring_api
 
@@ -20,6 +21,7 @@ from xblock.fields import Field, Scope, ScopeIds
 from xblock.field_data import FieldData
 
 from openedx.core.lib.xblock_serializer.api import serialize_modulestore_block_for_learning_core
+from openedx.core.lib.xblock_serializer.data import StaticFile
 from ..learning_context.manager import get_learning_context_impl
 from .runtime import XBlockRuntime
 
@@ -215,6 +217,38 @@ class LearningCoreXBlockRuntime(XBlockRuntime):
 
         return block
 
+    def get_block_assets(self, usage_key):
+        """
+        Return a list of StaticFile entries.
+
+        TODO: When we want to copy a whole Section at a time, doing these
+        lookups one by one is going to get slow.
+        """
+        component = self._get_component_from_usage_key(usage_key)
+        component_version = component.versioning.draft
+
+        # If there is no Draft version, then this was soft-deleted
+        if component_version is None:
+            return []
+
+        # cvc = the ComponentVersionContent through table
+        cvc_set = (
+            component_version
+            .componentversioncontent_set
+            .filter(content__has_file=True)
+            .order_by('key')
+            .select_related('content')
+        )
+
+        return [
+            StaticFile(
+                name=cvc.key,
+                url=None,
+                data=cvc.content.read_file().read()
+            )
+            for cvc in cvc_set
+        ]
+
     def save_block(self, block):
         """
         Save any pending field data values to Learning Core data models.
@@ -291,6 +325,44 @@ class LearningCoreXBlockRuntime(XBlockRuntime):
 
         This is called by the XBlockRuntime superclass in the .runtime module.
 
-        TODO: Implement as part of larger static asset effort.
+        TODO: Like get_block, we currently assume that we're using the Draft
+        version. This should be a runtime parameter.
         """
-        return None
+        usage_key = block.scope_ids.usage_id
+        component = self._get_component_from_usage_key(usage_key)
+        component_version = component.versioning.draft
+        if component_version is None:
+            # This could happen if a Component was soft-deleted.
+            raise NoSuchUsage(usage_key)
+
+        return reverse(
+            'library-assets',
+            kwargs={
+                'component_version_uuid': component_version.uuid,
+
+                # The standard XBlock "static/{asset_path}"" substitution
+                # strips out the leading "static/" part because it assumes that
+                # all files will exist in a flat namespace. Learning Core treats
+                # directories differently, and there may one day be other files
+                # that are not meant to be externally downloadable at the root
+                # (e.g. LaTeX source files or graders).
+                #
+                # So the transformation looks like this:
+                #
+                # 1. The Learning Core ComponentVersion has an asset stored as
+                #    "static/test.png".
+                # 1. The original OLX content we store references
+                #     "/static/test.png" or "static/test.png".
+                # 2. The ReplaceURLService XBlock runtime service invokes
+                #    static_replace and strips out "/static/".
+                # 3. The method we're in now is invoked with a static_path of
+                #    just "test.png", because that's the transformation that
+                #    works for ModuleStore-based courses.
+                # 4. This method then builds a URL that adds the "static/"
+                #    prefix back when creating the URL.
+                #
+                # Which is a very long explanation for why we're re-adding the
+                # "static/" to the asset path below.
+                'asset_path': f"static/{asset_path}",
+            }
+        )
