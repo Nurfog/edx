@@ -59,6 +59,8 @@ class HomePageView(APIView):
             "in_process_course_actions": [],
             "libraries": [],
             "libraries_enabled": true,
+            "libraries_v1_enabled": true,
+            "libraries_v2_enabled": true,
             "library_authoring_mfe_url": "//localhost:3001/course/course-v1:edX+P315+2T2023",
             "optimization_enabled": true,
             "redirect_to_library_authoring_mfe": false,
