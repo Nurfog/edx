@@ -108,7 +108,8 @@ from lms.djangoapps.instructor_task.data import InstructorTaskTypes
 from lms.djangoapps.instructor_task.models import ReportStore
 from lms.djangoapps.instructor.views.serializer import (
     AccessSerializer, BlockDueDateSerializer, RoleNameSerializer, ShowStudentExtensionSerializer, UserSerializer,
-    SendEmailSerializer, StudentAttemptsSerializer, ListInstructorTaskInputSerializer, UniqueStudentIdentifierSerializer
+    SendEmailSerializer, StudentAttemptsSerializer, ListInstructorTaskInputSerializer,
+    UniqueStudentIdentifierSerializer, CertificateSerializer
 )
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.course_groups.cohorts import add_user_to_cohort, is_course_cohorted
@@ -3327,42 +3328,84 @@ def start_certificate_regeneration(request, course_id):
     return JsonResponse(response_payload)
 
 
-@transaction.non_atomic_requests
-@ensure_csrf_cookie
-@cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(permissions.CERTIFICATE_EXCEPTION_VIEW)
-@require_http_methods(['POST', 'DELETE'])
-def certificate_exception_view(request, course_id):
+@method_decorator(cache_control(no_cache=True, no_store=True, must_revalidate=True), name='dispatch')
+@method_decorator(transaction.non_atomic_requests, name='dispatch')
+class CertificateExceptionView(DeveloperErrorViewMixin, APIView):
     """
     Add/Remove students to/from the certificate allowlist.
-
-    :param request: HttpRequest object
-    :param course_id: course identifier of the course for whom to add/remove certificates exception.
-    :return: JsonResponse object with success/error message or certificate exception data.
     """
-    course_key = CourseKey.from_string(course_id)
-    # Validate request data and return error response in case of invalid data
-    try:
-        certificate_exception, student = parse_request_data_and_get_user(request)
-    except ValueError as error:
-        return JsonResponse({'success': False, 'message': str(error)}, status=400)
+    permission_classes = (IsAuthenticated, permissions.InstructorPermission)
+    permission_name = permissions.CERTIFICATE_EXCEPTION_VIEW
+    serializer_class = CertificateSerializer
+    http_method_names = ['post', 'delete']
 
-    # Add new Certificate Exception for the student passed in request data
-    if request.method == 'POST':
+    @method_decorator(transaction.non_atomic_requests, name='dispatch')
+    @method_decorator(ensure_csrf_cookie)
+    def post(self, request, course_id):
+        """
+        Add certificate exception for a student.
+        """
+        return self._handle_certificate_exception(request, course_id, action="post")
+
+    @method_decorator(ensure_csrf_cookie)
+    @method_decorator(transaction.non_atomic_requests)
+    def delete(self, request, course_id):
+        """
+        Remove certificate exception for a student.
+        """
+        return self._handle_certificate_exception(request, course_id, action="delete")
+
+    def _handle_certificate_exception(self, request, course_id, action):
+        """
+        Handles adding or removing certificate exceptions.
+        """
+        course_key = CourseKey.from_string(course_id)
         try:
-            exception = add_certificate_exception(course_key, student, certificate_exception)
+            data = request.data
+        except Exception:  # pylint: disable=broad-except
+            return JsonResponse(
+                {
+                    'success': False,
+                    'message':
+                        _('The record is not in the correct format. Please add a valid username or email address.')},
+                status=400
+            )
+
+        # Extract and validate the student information
+        student, error_response = self._get_and_validate_user(data)
+
+        if error_response:
+            return error_response
+
+        try:
+            if action == "post":
+                exception = add_certificate_exception(course_key, student, data)
+                return JsonResponse(exception)
+            elif action == "delete":
+                remove_certificate_exception(course_key, student)
+                return JsonResponse({}, status=204)
         except ValueError as error:
             return JsonResponse({'success': False, 'message': str(error)}, status=400)
-        return JsonResponse(exception)
 
-    # Remove Certificate Exception for the student passed in request data
-    elif request.method == 'DELETE':
+    def _get_and_validate_user(self, raw_data):
+        """
+        Extracts the user data from the request and validates the student.
+        """
         try:
-            remove_certificate_exception(course_key, student)
+            user_data = raw_data.get('user_name', '') or raw_data.get('user_email', '')
         except ValueError as error:
-            return JsonResponse({'success': False, 'message': str(error)}, status=400)
+            return None, JsonResponse({'success': False, 'message': str(error)}, status=400)
 
-        return JsonResponse({}, status=204)
+        serializer_data = self.serializer_class(data={'user': user_data})
+        if not serializer_data.is_valid():
+            return None, JsonResponse({'success': False, 'message': serializer_data.errors}, status=400)
+
+        student = serializer_data.validated_data.get('user')
+        if not student:
+            response_payload = f'{user_data} does not exist in the LMS. Please check your spelling and retry.'
+            return None, JsonResponse({'success': False, 'message': response_payload}, status=400)
+
+        return student, None
 
 
 def add_certificate_exception(course_key, student, certificate_exception):

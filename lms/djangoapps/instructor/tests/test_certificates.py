@@ -488,9 +488,7 @@ class CertificateExceptionViewInstructorApiTest(SharedModuleStoreTestCase):
         assert not res_json['success']
 
         # Assert Error Message
-        assert res_json['message'] ==\
-               'Student username/email field is required and can not be empty.' \
-               ' Kindly fill in username/email and then press "Add to Exception List" button.'
+        assert res_json['message'] == {'user': ['This field may not be blank.']}
 
     def test_certificate_exception_duplicate_user_error(self):
         """
