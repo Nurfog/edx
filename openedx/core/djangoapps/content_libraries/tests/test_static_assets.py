@@ -23,15 +23,9 @@ I'm Anant Agarwal, I'm the president of edX,
 """
 
 
-@skip("Assets are being reimplemented in Learning Core. Disable until that's ready.")
 class ContentLibrariesStaticAssetsTest(ContentLibrariesRestApiTest):
     """
     Tests for static asset files in Learning-Core-based Content Libraries
-
-    WARNING: every test should have a unique library slug, because even though
-    the django/mysql database gets reset for each test case, the lookup between
-    library slug and bundle UUID does not because it's assumed to be immutable
-    and cached forever.
     """
 
     def test_asset_filenames(self):

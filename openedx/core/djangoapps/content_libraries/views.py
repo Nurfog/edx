@@ -71,6 +71,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login
 from django.contrib.auth.models import Group
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.transaction import atomic, non_atomic_requests
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -87,6 +88,7 @@ from pylti1p3.exception import LtiException, OIDCException
 import edx_api_doc_tools as apidocs
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.locator import LibraryLocatorV2, LibraryUsageLocatorV2
+from openedx_learning.api import authoring
 from organizations.api import ensure_organization
 from organizations.exceptions import InvalidOrganizationException
 from organizations.models import Organization
@@ -757,7 +759,7 @@ class LibraryBlockAssetView(APIView):
             raise ValidationError("File too big")
         file_content = file_wrapper.read()
         try:
-            result = api.add_library_block_static_asset_file(usage_key, file_path, file_content)
+            result = api.add_library_block_static_asset_file(usage_key, file_path, file_content, request.user)
         except ValueError:
             raise ValidationError("Invalid file path")  # lint-amnesty, pylint: disable=raise-missing-from
         return Response(LibraryXBlockStaticFileSerializer(result).data)
@@ -772,7 +774,7 @@ class LibraryBlockAssetView(APIView):
             usage_key.lib_key, request.user, permissions.CAN_EDIT_THIS_CONTENT_LIBRARY,
         )
         try:
-            api.delete_library_block_static_asset_file(usage_key, file_path)
+            api.delete_library_block_static_asset_file(usage_key, file_path, request.user)
         except ValueError:
             raise ValidationError("Invalid file path")  # lint-amnesty, pylint: disable=raise-missing-from
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -1125,7 +1127,7 @@ def component_version_asset(request, component_version_uuid, asset_path):
       eventually).
     """
     try:
-        component_version = authoring_api.get_component_version_by_uuid(
+        component_version = authoring.get_component_version_by_uuid(
             component_version_uuid
         )
     except ObjectDoesNotExist:
@@ -1144,7 +1146,7 @@ def component_version_asset(request, component_version_uuid, asset_path):
     # this response in conjunction with a media reverse proxy (Caddy or Nginx),
     # but in the short term we're just going to remove the redirect and stream
     # the content directly.
-    redirect_response = authoring_api.get_redirect_response_for_component_asset(
+    redirect_response = authoring.get_redirect_response_for_component_asset(
         component_version_uuid,
         asset_path,
         public=False,
