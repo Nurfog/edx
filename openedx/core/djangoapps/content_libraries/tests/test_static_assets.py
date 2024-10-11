@@ -73,7 +73,7 @@ class ContentLibrariesStaticAssetsTest(ContentLibrariesRestApiTest):
             />
         """)
         # Upload the transcript file
-        self._set_library_block_asset(block_id, "3_yD_cEKoCk-en.srt", TRANSCRIPT_DATA)
+        self._set_library_block_asset(block_id, "static/3_yD_cEKoCk-en.srt", TRANSCRIPT_DATA)
 
         transcript_handler_url = self._get_block_handler_url(block_id, "transcript")
 

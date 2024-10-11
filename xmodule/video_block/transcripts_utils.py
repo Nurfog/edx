@@ -1116,6 +1116,7 @@ def get_transcript_from_learning_core(video_block, language, output_format, tran
         .filter(content__has_file=True)
         .select_related('content')
         .get(key=file_path)
+        .content
     )
     data = content.read_file().read()
 
