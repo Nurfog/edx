@@ -1060,7 +1060,11 @@ def add_library_block_static_asset_file(usage_key, file_path, file_content, user
         video_block = UsageKey.from_string("lb:VideoTeam:python-intro:video:1")
         add_library_block_static_asset_file(video_block, "subtitles-en.srt", subtitles.encode('utf-8'))
     """
-    # File path validations copied over from v1 library logic...
+    # File path validations copied over from v1 library logic. This can't really
+    # hurt us inside our system because we never use these paths in an actual
+    # file system–they're just string keys that point to hash-named data files
+    # in a common library (learning package) level directory. But it might
+    # become a security issue during import/export serialization.
     if file_path != file_path.strip().strip('/'):
         raise InvalidNameError("file_path cannot start/end with / or whitespace.")
     if '//' in file_path or '..' in file_path:
@@ -1069,10 +1073,10 @@ def add_library_block_static_asset_file(usage_key, file_path, file_content, user
     component = get_component_from_usage_key(usage_key)
 
     media_type_str, _encoding = mimetypes.guess_type(file_path)
-    media_type = authoring_api.get_or_create_media_type(media_type_str)
     now = datetime.now(tz=timezone.utc)
 
     with transaction.atomic():
+        media_type = authoring_api.get_or_create_media_type(media_type_str)
         content = authoring_api.get_or_create_file_content(
             component.publishable_entity.learning_package.id,
             media_type.id,
