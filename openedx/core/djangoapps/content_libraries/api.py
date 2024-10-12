@@ -1073,6 +1073,11 @@ def add_library_block_static_asset_file(usage_key, file_path, file_content, user
     component = get_component_from_usage_key(usage_key)
 
     media_type_str, _encoding = mimetypes.guess_type(file_path)
+    # We use "application/octet-stream" as a generic fallback media type, per
+    # RFC 2046: https://datatracker.ietf.org/doc/html/rfc2046
+    # TODO: This probably makes sense to push down to openedx-learning?
+    media_type_str = media_type_str or "application/octet-stream"
+
     now = datetime.now(tz=timezone.utc)
 
     with transaction.atomic():

@@ -15,6 +15,7 @@ from functools import wraps
 import requests
 import simplejson as json
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from lxml import etree
 from opaque_keys.edx.keys import UsageKeyV2
 from openedx_learning.api import authoring
@@ -1098,27 +1099,34 @@ def get_transcript_from_learning_core(video_block, language, output_format, tran
     component_version = component.versioning.draft
     if not component_version:
         raise NotFoundError(
-            f"No transcript for {usage_key}: Component {component.uuid} was soft-deleted."
+            f"No transcript for {usage_key} because Component {component.uuid} "
+            "was soft-deleted."
         )
 
     file_path = pathlib.Path(f"static/{transcripts[language]}")
     if file_path.suffix != '.srt':
         # We want to standardize on .srt
-        raise NotFoundError("Video XBlocks in Content Libraries only support .srt transcript files.")
+        raise NotFoundError(
+            "Video XBlocks in Content Libraries only support storing .srt "
+            f"transcript files, but we tried to look up {path_file} for {usage_key}"
+        )
 
     # TODO: There should be a Learning Core API call for this:
-    print(
-        [(cvc.key, cvc.content.has_file) for cvc in component_version.componentversioncontent_set.all()]
-    )
-    content = (
-        component_version
-        .componentversioncontent_set
-        .filter(content__has_file=True)
-        .select_related('content')
-        .get(key=file_path)
-        .content
-    )
-    data = content.read_file().read()
+    try:
+        content = (
+            component_version
+            .componentversioncontent_set
+            .filter(content__has_file=True)
+            .select_related('content')
+            .get(key=file_path)
+            .content
+        )
+        data = content.read_file().read()
+    except ObjectDoesNotExist:
+        raise NotFoundError(
+            f"No file {file_path} found for {usage_key} "
+            f"(ComponentVersion {component_version.uuid})"
+        )
 
     # Now convert the transcript data to the requested format:
     output_filename = f'{file_path.stem}.{output_format}'
@@ -1128,7 +1136,11 @@ def get_transcript_from_learning_core(video_block, language, output_format, tran
         output_format=output_format,
     )
     if not output_transcript.strip():
-        raise NotFoundError('No transcript content')
+        raise NotFoundError(
+            f"Transcript file {file_path} found for {usage_key} "
+            f"(ComponentVersion {component_version.uuid}), but it has no "
+            "content or is malformed."
+        )
 
     return output_transcript, output_filename, Transcript.mime_types[output_format]
 
