@@ -1130,8 +1130,8 @@ def component_version_asset(request, component_version_uuid, asset_path):
         component_version = authoring.get_component_version_by_uuid(
             component_version_uuid
         )
-    except ObjectDoesNotExist:
-        raise Http404()
+    except ObjectDoesNotExist as exc:
+        raise Http404() from exc
 
     # Permissions check...
     learning_package = component_version.component.learning_package
