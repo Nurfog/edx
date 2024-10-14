@@ -70,7 +70,7 @@ edx-django-utils==6.0.0
     # via
     #   -r scripts/user_retirement/requirements/base.txt
     #   edx-rest-api-client
-edx-rest-api-client==5.7.1
+edx-rest-api-client==6.0.0
     # via -r scripts/user_retirement/requirements/base.txt
 google-api-core==2.21.0
     # via
@@ -216,7 +216,6 @@ requests==2.32.3
     #   requests-toolbelt
     #   responses
     #   simple-salesforce
-    #   slumber
     #   zeep
 requests-file==2.1.0
     # via
@@ -249,10 +248,6 @@ six==1.16.0
     #   -r scripts/user_retirement/requirements/base.txt
     #   jenkinsapi
     #   python-dateutil
-slumber==0.7.1
-    # via
-    #   -r scripts/user_retirement/requirements/base.txt
-    #   edx-rest-api-client
 sqlparse==0.5.1
     # via
     #   -r scripts/user_retirement/requirements/base.txt

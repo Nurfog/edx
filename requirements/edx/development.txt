@@ -800,9 +800,8 @@ edx-rbac==1.10.0
     #   -r requirements/edx/doc.txt
     #   -r requirements/edx/testing.txt
     #   edx-enterprise
-edx-rest-api-client==5.7.1
+edx-rest-api-client==6.0.0
     # via
-    #   -c requirements/edx/../constraints.txt
     #   -r requirements/edx/doc.txt
     #   -r requirements/edx/testing.txt
     #   edx-enterprise
@@ -1946,7 +1945,6 @@ slumber==0.7.1
     #   -r requirements/edx/testing.txt
     #   edx-bulk-grades
     #   edx-enterprise
-    #   edx-rest-api-client
 smmap==5.0.1
     # via
     #   -r requirements/edx/doc.txt
