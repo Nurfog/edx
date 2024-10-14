@@ -5,6 +5,7 @@ from uuid import UUID
 
 from opaque_keys.edx.keys import UsageKey
 
+from common.djangoapps.student.tests.factories import UserFactory
 from openedx.core.djangoapps.content_libraries.tests.base import (
     ContentLibrariesRestApiTest,
 )
@@ -167,3 +168,19 @@ class ContentLibrariesComponentVersionAssetTest(ContentLibrariesRestApiTest):
             f"/library_assets/{self.draft_component_version.uuid}/static/test.svg"
         )
         assert response.status_code == 403
+
+    def test_unauthorized_user(self):
+        """User who is not a Content Library staff should not have access."""
+        self.client.logout()
+        student = UserFactory.create(
+            username="student",
+            email="student@example.com",
+            password="student-pass",
+            is_staff=False,
+            is_superuser=False,
+        )
+        self.client.login(username="student", password="student-pass")
+        get_response = self.client.get(
+            f"/library_assets/{self.draft_component_version.uuid}/static/test.svg"
+        )
+        assert get_response.status_code == 403
