@@ -18,7 +18,6 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from lxml import etree
 from opaque_keys.edx.keys import UsageKeyV2
-from openedx_learning.api import authoring
 from pysrt import SubRipFile, SubRipItem, SubRipTime
 from pysrt.srtexc import Error
 
@@ -1108,7 +1107,7 @@ def get_transcript_from_learning_core(video_block, language, output_format, tran
         # We want to standardize on .srt
         raise NotFoundError(
             "Video XBlocks in Content Libraries only support storing .srt "
-            f"transcript files, but we tried to look up {path_file} for {usage_key}"
+            f"transcript files, but we tried to look up {file_path} for {usage_key}"
         )
 
     # TODO: There should be a Learning Core API call for this:
@@ -1122,11 +1121,11 @@ def get_transcript_from_learning_core(video_block, language, output_format, tran
             .content
         )
         data = content.read_file().read()
-    except ObjectDoesNotExist:
+    except ObjectDoesNotExist as exc:
         raise NotFoundError(
             f"No file {file_path} found for {usage_key} "
             f"(ComponentVersion {component_version.uuid})"
-        )
+        ) from exc
 
     # Now convert the transcript data to the requested format:
     output_filename = f'{file_path.stem}.{output_format}'
