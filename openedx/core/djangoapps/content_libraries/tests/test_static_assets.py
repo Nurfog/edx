@@ -2,7 +2,6 @@
 Tests for static asset files in Learning-Core-based Content Libraries
 """
 from uuid import UUID
-from unittest import skip
 
 from opaque_keys.edx.keys import UsageKey
 
@@ -26,6 +25,7 @@ Welcome to edX.
 00:00:01,510 --> 00:00:04,480
 I'm Anant Agarwal, I'm the president of edX,
 """
+
 
 @skip_unless_cms
 class ContentLibrariesStaticAssetsTest(ContentLibrariesRestApiTest):
@@ -125,7 +125,6 @@ class ContentLibrariesComponentVersionAssetTest(ContentLibrariesRestApiTest):
         self.component = get_component_from_usage_key(usage_key)
         self.draft_component_version = self.component.versioning.draft
 
-
     def test_good_responses(self):
         get_response = self.client.get(
             f"/library_assets/{self.draft_component_version.uuid}/static/test.svg"
@@ -138,7 +137,6 @@ class ContentLibrariesComponentVersionAssetTest(ContentLibrariesRestApiTest):
             f"/library_assets/{self.draft_component_version.uuid}/static/test.svg"
         )
         assert good_head_response.headers == get_response.headers
-
 
     def test_missing(self):
         """Test asset requests that should 404."""
@@ -161,7 +159,6 @@ class ContentLibrariesComponentVersionAssetTest(ContentLibrariesRestApiTest):
             f"/library_assets/{self.draft_component_version.uuid}/block.xml"
         )
         assert response.status_code == 404
-
 
     def test_anonymous_user(self):
         """Anonymous users shouldn't get access to library assets."""
